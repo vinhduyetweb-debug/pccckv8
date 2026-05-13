@@ -1,0 +1,390 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PCCC KV8 Dashboard V2</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{
+margin:0;
+padding:20px;
+background:#0b0b0b;
+color:white;
+font-family:Arial,sans-serif;
+}
+h1{
+color:#ff3b30;
+margin-bottom:20px;
+}
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+gap:15px;
+}
+.card{
+background:#161616;
+padding:20px;
+border-radius:18px;
+border:1px solid #333;
+}
+.big{
+font-size:42px;
+font-weight:bold;
+margin-top:10px;
+}
+.red{border-color:#ff3b30;}
+.orange{border-color:#ff9500;}
+.green{color:#00d084;}
+.yellow{color:#ffd60a;}
+.section{
+margin-top:20px;
+}
+select,input,button{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+border-radius:10px;
+font-size:16px;
+}
+button{
+background:#ff3b30;
+color:white;
+font-weight:bold;
+cursor:pointer;
+}
+button.secondary{
+background:#333;
+}
+table{
+width:100%;
+margin-top:15px;
+border-collapse:collapse;
+}
+th,td{
+padding:10px;
+border-bottom:1px solid #333;
+text-align:left;
+}
+.flex{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+.flex button{
+flex:1;
+}
+textarea{
+width:100%;
+height:180px;
+background:#000;
+color:#00d084;
+padding:15px;
+border-radius:12px;
+border:1px solid #333;
+margin-top:10px;
+}
+.status-ok{
+color:#00d084;
+font-weight:bold;
+}
+.status-miss{
+color:#ff3b30;
+font-weight:bold;
+}
+canvas{
+background:#111;
+border-radius:16px;
+padding:10px;
+margin-top:20px;
+}
+</style>
+</head>
+<body>
+
+<h1>PCCC SCAN TRACKING - KV8 V2</h1>
+
+<div class="grid">
+<div class="card red">
+<div>KV8 CBKT</div>
+<div class="big" id="cbktTotal">0</div>
+</div>
+
+<div class="card orange">
+<div>UBP.CH</div>
+<div class="big" id="chTotal">0</div>
+</div>
+
+<div class="card orange">
+<div>UBP.BD</div>
+<div class="big" id="bdTotal">0</div>
+</div>
+
+<div class="card orange">
+<div>UBP.PD</div>
+<div class="big" id="pdTotal">0</div>
+</div>
+</div>
+
+<div class="section card red">
+<div>TỔNG ĐỊA BÀN KV8</div>
+<div class="big" id="grandTotal">0</div>
+</div>
+
+<div class="section card">
+<h2>NHẬP LIỆU</h2>
+
+<input type="date" id="date">
+
+<select id="person"></select>
+
+<input type="number" id="quantity" placeholder="Nhập số lượng">
+
+<div class="flex">
+<button onclick="saveData()">LƯU / CẬP NHẬT</button>
+<button class="secondary" onclick="resetData()">RESET NGÀY</button>
+</div>
+</div>
+
+<div class="section card">
+<h2>TRẠNG THÁI NHẬP LIỆU</h2>
+<table>
+<thead>
+<tr>
+<th>Người nhập</th>
+<th>Trạng thái</th>
+</tr>
+</thead>
+<tbody id="statusTable"></tbody>
+</table>
+</div>
+
+<div class="section card">
+<h2>DANH SÁCH NHẬP LIỆU</h2>
+<table>
+<thead>
+<tr>
+<th>Ngày</th>
+<th>Người nhập</th>
+<th>Số lượng</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+</div>
+
+<div class="section card">
+<h2>TOP THỰC HIỆN</h2>
+<table>
+<thead>
+<tr>
+<th>TOP</th>
+<th>Người nhập</th>
+<th>Số lượng</th>
+</tr>
+</thead>
+<tbody id="topTable"></tbody>
+</table>
+</div>
+
+<div class="section card">
+<h2>BÁO CÁO NHANH</h2>
+<button onclick="generateReport()">TẠO BÁO CÁO</button>
+<textarea id="reportBox"></textarea>
+</div>
+
+<div class="section card">
+<h2>BIỂU ĐỒ TIẾN ĐỘ</h2>
+<canvas id="chart"></canvas>
+</div>
+
+<script>
+const users = [
+'PHONG','SANG','SƠN','BẮC','TRÍ','TRỌN',
+'THÀNH','DUY','KHOA','VINH','TUẤN','HƯNG','KHANH',
+'UBP.CH','UBP.BD','UBP.PD'
+];
+
+const cbktList = [
+'PHONG','SANG','SƠN','BẮC','TRÍ','TRỌN',
+'THÀNH','DUY','KHOA','VINH','TUẤN','HƯNG','KHANH'
+];
+
+const select = document.getElementById('person');
+
+users.forEach(user=>{
+const option = document.createElement('option');
+option.value = user;
+option.innerText = user;
+select.appendChild(option);
+});
+
+document.getElementById('date').valueAsDate = new Date();
+
+let chart;
+
+function getData(){
+return JSON.parse(localStorage.getItem('pcccDataV2') || '[]');
+}
+
+function setData(data){
+localStorage.setItem('pcccDataV2', JSON.stringify(data));
+}
+
+function saveData(){
+const date = document.getElementById('date').value;
+const person = document.getElementById('person').value;
+const quantity = Number(document.getElementById('quantity').value);
+
+if(!quantity){
+alert('Nhập số lượng');
+return;
+}
+
+let data = getData();
+
+const existing = data.find(item => item.date === date && item.person === person);
+
+if(existing){
+existing.quantity = quantity;
+}else{
+data.push({
+date,
+person,
+quantity
+});
+}
+
+setData(data);
+
+document.getElementById('quantity').value='';
+
+loadDashboard();
+}
+
+function resetData(){
+if(confirm('Xóa toàn bộ dữ liệu?')){
+localStorage.removeItem('pcccDataV2');
+loadDashboard();
+}
+}
+
+function loadDashboard(){
+const data = getData();
+
+const tableBody = document.getElementById('tableBody');
+const statusTable = document.getElementById('statusTable');
+const topTable = document.getElementById('topTable');
+
+tableBody.innerHTML='';
+statusTable.innerHTML='';
+topTable.innerHTML='';
+
+let cbktTotal=0;
+let ch=0;
+let bd=0;
+let pd=0;
+
+const ranking = [];
+
+data.forEach(item=>{
+
+if(cbktList.includes(item.person)){
+cbktTotal += item.quantity;
+}
+
+if(item.person === 'UBP.CH') ch += item.quantity;
+if(item.person === 'UBP.BD') bd += item.quantity;
+if(item.person === 'UBP.PD') pd += item.quantity;
+
+ranking.push(item);
+
+tableBody.innerHTML += `
+<tr>
+<td>${item.date}</td>
+<td>${item.person}</td>
+<td class="green">${item.quantity}</td>
+</tr>
+`;
+});
+
+document.getElementById('cbktTotal').innerText = cbktTotal;
+document.getElementById('chTotal').innerText = ch;
+document.getElementById('bdTotal').innerText = bd;
+document.getElementById('pdTotal').innerText = pd;
+document.getElementById('grandTotal').innerText = cbktTotal + ch + bd + pd;
+
+users.forEach(user=>{
+const found = data.find(item=>item.person===user);
+
+statusTable.innerHTML += `
+<tr>
+<td>${user}</td>
+<td class="${found ? 'status-ok':'status-miss'}">
+${found ? 'ĐÃ NHẬP':'CHƯA NHẬP'}
+</td>
+</tr>
+`;
+});
+
+ranking.sort((a,b)=>b.quantity-a.quantity);
+
+ranking.slice(0,5).forEach((item,index)=>{
+topTable.innerHTML += `
+<tr>
+<td>${index+1}</td>
+<td>${item.person}</td>
+<td class="yellow">${item.quantity}</td>
+</tr>
+`;
+});
+
+renderChart(cbktTotal,ch,bd,pd);
+}
+
+function generateReport(){
+const cbkt = document.getElementById('cbktTotal').innerText;
+const ch = document.getElementById('chTotal').innerText;
+const bd = document.getElementById('bdTotal').innerText;
+const pd = document.getElementById('pdTotal').innerText;
+const total = document.getElementById('grandTotal').innerText;
+
+const report = `Chốt số liệu Tổng rà soát
+
+- KV8: ${cbkt} cơ sở
+- UBP.CH: ${ch} cơ sở
+- UBP.BD: ${bd} cơ sở
+- UBP.PD: ${pd} cơ sở
+
+Tổng địa bàn KV8: ${total} cơ sở`;
+
+document.getElementById('reportBox').value = report;
+}
+
+function renderChart(cbkt,ch,bd,pd){
+
+const ctx = document.getElementById('chart');
+
+if(chart){
+chart.destroy();
+}
+
+chart = new Chart(ctx,{
+type:'bar',
+data:{
+labels:['KV8','UBP.CH','UBP.BD','UBP.PD'],
+datasets:[{
+label:'Số lượng',
+data:[cbkt,ch,bd,pd]
+}]
+}
+});
+}
+
+loadDashboard();
+</script>
+
+</body>
+</html>
