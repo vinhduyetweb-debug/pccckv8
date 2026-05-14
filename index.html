@@ -1,451 +1,96 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PCCC KV8 Dashboard V3</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-body{
-margin:0;
-padding:20px;
-background:#0b0b0b;
-color:white;
-font-family:Arial,sans-serif;
-}
-h1{color:#ff3b30;}
-.grid{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-gap:15px;
-}
-.card{
-background:#161616;
-padding:20px;
-border-radius:18px;
-border:1px solid #333;
-margin-top:20px;
-}
-.big{
-font-size:42px;
-font-weight:bold;
-margin-top:10px;
-}
-.red{border-color:#ff3b30;}
-.orange{border-color:#ff9500;}
-.green{color:#00d084;font-weight:bold;}
-.yellow{color:#ffd60a;font-weight:bold;}
-.status-ok{color:#00d084;font-weight:bold;}
-.status-miss{color:#ff3b30;font-weight:bold;}
-select,input,button,textarea{
-width:100%;
-padding:12px;
-margin-top:10px;
-border:none;
-border-radius:10px;
-font-size:16px;
-}
-button{
-background:#ff3b30;
-color:white;
-font-weight:bold;
-cursor:pointer;
-}
-.secondary{
-background:#333;
-}
-table{
-width:100%;
-border-collapse:collapse;
-margin-top:15px;
-}
-th,td{
-padding:10px;
-border-bottom:1px solid #333;
-text-align:left;
-}
-.flex{
-display:flex;
-gap:10px;
-flex-wrap:wrap;
-}
-.flex button{flex:1;}
-textarea{
-height:200px;
-background:#000;
-color:#00d084;
-}
-canvas{
-background:#111;
-border-radius:16px;
-padding:10px;
-margin-top:20px;
-}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PCCC KV8 Tactical Dashboard</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-
-<h1>PCCC SCAN TRACKING - KV8 V3</h1>
-
-<div class="grid">
-<div class="card red">
-<div>KV8 CBKT</div>
-<div class="big" id="cbktTotal">0</div>
-</div>
-
-<div class="card orange">
-<div>UBP.CH</div>
-<div class="big" id="chTotal">0</div>
-</div>
-
-<div class="card orange">
-<div>UBP.BD</div>
-<div class="big" id="bdTotal">0</div>
-</div>
-
-<div class="card orange">
-<div>UBP.PD</div>
-<div class="big" id="pdTotal">0</div>
-</div>
-</div>
-
-<div class="card red">
-<div>TỔNG ĐỊA BÀN KV8</div>
-<div class="big" id="grandTotal">0</div>
-</div>
-
-<div class="card">
-<h2>NHẬP LIỆU</h2>
-
-<input type="date" id="date">
-
-<select id="person"></select>
-
-<input type="number" id="quantity" placeholder="Nhập số lượng">
-
-<div class="flex">
-<button onclick="saveData()">LƯU / CẬP NHẬT</button>
-<button class="secondary" onclick="resetToday()">RESET NGÀY ĐANG CHỌN</button>
-</div>
-</div>
-
-<div class="card">
-<h2>TRẠNG THÁI NHẬP LIỆU</h2>
-<table>
-<thead>
-<tr>
-<th>Người nhập</th>
-<th>Trạng thái</th>
-</tr>
-</thead>
-<tbody id="statusTable"></tbody>
-</table>
-</div>
-
-<div class="card">
-<h2>DỮ LIỆU THEO NGÀY</h2>
-<table>
-<thead>
-<tr>
-<th>Ngày</th>
-<th>Người nhập</th>
-<th>Số lượng</th>
-</tr>
-</thead>
-<tbody id="tableBody"></tbody>
-</table>
-</div>
-
-<div class="card">
-<h2>BÁO CÁO TỪNG NGÀY</h2>
-<table>
-<thead>
-<tr>
-<th>Ngày</th>
-<th>Tổng số lượng</th>
-</tr>
-</thead>
-<tbody id="dailySummary"></tbody>
-</table>
-</div>
-
-<div class="card">
-<h2>TOP THỰC HIỆN</h2>
-<table>
-<thead>
-<tr>
-<th>TOP</th>
-<th>Người nhập</th>
-<th>Số lượng</th>
-</tr>
-</thead>
-<tbody id="topTable"></tbody>
-</table>
-</div>
-
-<div class="card">
-<h2>BÁO CÁO NHANH THEO NGÀY</h2>
-<button onclick="generateDailyReport()">TẠO BÁO CÁO NGÀY</button>
-<textarea id="dailyReport"></textarea>
-</div>
-
-<div class="card">
-<h2>BÁO CÁO TỔNG QUA CÁC NGÀY</h2>
-<button onclick="generateTotalReport()">TẠO BÁO CÁO TỔNG</button>
-<textarea id="totalReport"></textarea>
-</div>
-
-<div class="card">
-<h2>BIỂU ĐỒ TỔNG HỢP</h2>
-<canvas id="chart"></canvas>
-</div>
-
-<script>
-const users = [
-'PHONG','SANG','SƠN','BẮC','TRÍ','TRỌN',
-'THÀNH','DUY','KHOA','VINH','TUẤN','HƯNG','KHANH',
-'UBP.CH','UBP.BD','UBP.PD'
-];
-
-const cbktList = [
-'PHONG','SANG','SƠN','BẮC','TRÍ','TRỌN',
-'THÀNH','DUY','KHOA','VINH','TUẤN','HƯNG','KHANH'
-];
-
-const select = document.getElementById('person');
-
-users.forEach(user=>{
-const option = document.createElement('option');
-option.value = user;
-option.innerText = user;
-select.appendChild(option);
-});
-
-document.getElementById('date').valueAsDate = new Date();
-
-let chart;
-
-function getData(){
-return JSON.parse(localStorage.getItem('pcccDataV3') || '[]');
-}
-
-function setData(data){
-localStorage.setItem('pcccDataV3', JSON.stringify(data));
-}
-
-function saveData(){
-const date = document.getElementById('date').value;
-const person = document.getElementById('person').value;
-const quantity = Number(document.getElementById('quantity').value);
-
-if(!quantity){
-alert('Nhập số lượng');
-return;
-}
-
-let data = getData();
-
-const existing = data.find(item => item.date === date && item.person === person);
-
-if(existing){
-existing.quantity = quantity;
-}else{
-data.push({date,person,quantity});
-}
-
-setData(data);
-
-document.getElementById('quantity').value='';
-
-loadDashboard();
-}
-
-function resetToday(){
-const date = document.getElementById('date').value;
-
-if(confirm('Xóa dữ liệu ngày đang chọn?')){
-let data = getData();
-
-data = data.filter(item => item.date !== date);
-
-setData(data);
-
-loadDashboard();
-}
-}
-
-function loadDashboard(){
-
-const data = getData();
-
-const tableBody = document.getElementById('tableBody');
-const statusTable = document.getElementById('statusTable');
-const topTable = document.getElementById('topTable');
-const dailySummary = document.getElementById('dailySummary');
-
-tableBody.innerHTML='';
-statusTable.innerHTML='';
-topTable.innerHTML='';
-dailySummary.innerHTML='';
-
-let cbktTotal=0;
-let ch=0;
-let bd=0;
-let pd=0;
-
-const ranking=[];
-const dailyMap={};
-
-data.forEach(item=>{
-
-if(cbktList.includes(item.person)){
-cbktTotal += item.quantity;
-}
-
-if(item.person === 'UBP.CH') ch += item.quantity;
-if(item.person === 'UBP.BD') bd += item.quantity;
-if(item.person === 'UBP.PD') pd += item.quantity;
-
-ranking.push(item);
-
-if(!dailyMap[item.date]){
-dailyMap[item.date]=0;
-}
-
-dailyMap[item.date]+=item.quantity;
-
-tableBody.innerHTML += `
-<tr>
-<td>${item.date}</td>
-<td>${item.person}</td>
-<td class="green">${item.quantity}</td>
-</tr>
-`;
-});
-
-Object.keys(dailyMap).forEach(date=>{
-dailySummary.innerHTML += `
-<tr>
-<td>${date}</td>
-<td class="yellow">${dailyMap[date]}</td>
-</tr>
-`;
-});
-
-document.getElementById('cbktTotal').innerText = cbktTotal;
-document.getElementById('chTotal').innerText = ch;
-document.getElementById('bdTotal').innerText = bd;
-document.getElementById('pdTotal').innerText = pd;
-document.getElementById('grandTotal').innerText = cbktTotal + ch + bd + pd;
-
-const today = document.getElementById('date').value;
-
-users.forEach(user=>{
-
-const found = data.find(item=>item.date===today && item.person===user);
-
-statusTable.innerHTML += `
-<tr>
-<td>${user}</td>
-<td class="${found ? 'status-ok':'status-miss'}">
-${found ? 'ĐÃ NHẬP':'CHƯA NHẬP'}
-</td>
-</tr>
-`;
-});
-
-ranking.sort((a,b)=>b.quantity-a.quantity);
-
-ranking.slice(0,5).forEach((item,index)=>{
-topTable.innerHTML += `
-<tr>
-<td>${index+1}</td>
-<td>${item.person}</td>
-<td class="yellow">${item.quantity}</td>
-</tr>
-`;
-});
-
-renderChart(cbktTotal,ch,bd,pd);
-}
-
-function generateDailyReport(){
-
-const today = document.getElementById('date').value;
-
-const data = getData().filter(item=>item.date===today);
-
-let cbkt=0;
-let ch=0;
-let bd=0;
-let pd=0;
-
-data.forEach(item=>{
-if(cbktList.includes(item.person)) cbkt += item.quantity;
-if(item.person==='UBP.CH') ch += item.quantity;
-if(item.person==='UBP.BD') bd += item.quantity;
-if(item.person==='UBP.PD') pd += item.quantity;
-});
-
-const total = cbkt + ch + bd + pd;
-
-document.getElementById('dailyReport').value =
-`Chốt số liệu Tổng rà soát ngày ${today}
-
-- KV8: ${cbkt} cơ sở
-- UBP.CH: ${ch} cơ sở
-- UBP.BD: ${bd} cơ sở
-- UBP.PD: ${pd} cơ sở
-
-Tổng địa bàn KV8: ${total} cơ sở`;
-}
-
-function generateTotalReport(){
-
-const data = getData();
-
-const dailyMap={};
-
-data.forEach(item=>{
-if(!dailyMap[item.date]){
-dailyMap[item.date]=0;
-}
-
-dailyMap[item.date]+=item.quantity;
-});
-
-let report='BÁO CÁO TỔNG QUA CÁC NGÀY\n\n';
-
-Object.keys(dailyMap).sort().forEach(date=>{
-report += `- ${date}: ${dailyMap[date]} cơ sở\n`;
-});
-
-document.getElementById('totalReport').value = report;
-}
-
-function renderChart(cbkt,ch,bd,pd){
-
-const ctx = document.getElementById('chart');
-
-if(chart){
-chart.destroy();
-}
-
-chart = new Chart(ctx,{
-type:'bar',
-data:{
-labels:['KV8','UBP.CH','UBP.BD','UBP.PD'],
-datasets:[{
-label:'Số lượng',
-data:[cbkt,ch,bd,pd]
-}]
-}
-});
-}
-
-loadDashboard();
-</script>
-
+  <header class="topbar">
+    <div>
+      <h1>PCCC KV8 Tactical Dashboard</h1>
+      <p>Realtime Tactical Monitoring System</p>
+    </div>
+    <div class="clock" id="clock"></div>
+  </header>
+
+  <section class="stats-grid">
+    <div class="card glow">
+      <h2>Tổng cơ sở</h2>
+      <span id="totalFacilities">0</span>
+    </div>
+
+    <div class="card">
+      <h2>Đã kiểm tra</h2>
+      <span id="checkedFacilities">0</span>
+    </div>
+
+    <div class="card warning">
+      <h2>Chưa kiểm tra</h2>
+      <span id="uncheckedFacilities">0</span>
+    </div>
+
+    <div class="card danger">
+      <h2>Nguy cơ cao</h2>
+      <span id="highRiskFacilities">0</span>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <h2>Nhập dữ liệu kiểm tra</h2>
+
+    <form id="inspectionForm">
+      <input type="text" id="facilityName" placeholder="Tên cơ sở" required />
+
+      <select id="facilityType">
+        <option>Nhà trọ</option>
+        <option>Trường học</option>
+        <option>Kho hàng</option>
+        <option>Nhà xưởng</option>
+        <option>Hộ kinh doanh</option>
+      </select>
+
+      <select id="riskLevel">
+        <option value="low">Nguy cơ thấp</option>
+        <option value="medium">Nguy cơ trung bình</option>
+        <option value="high">Nguy cơ cao</option>
+      </select>
+
+      <select id="inspectionStatus">
+        <option value="checked">Đã kiểm tra</option>
+        <option value="unchecked">Chưa kiểm tra</option>
+      </select>
+
+      <button type="submit">Lưu dữ liệu</button>
+    </form>
+  </section>
+
+  <section class="table-section">
+    <div class="section-header">
+      <h2>Dữ liệu hiện trường</h2>
+      <button id="resetBtn">Reset ngày mới</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Cơ sở</th>
+          <th>Loại hình</th>
+          <th>Nguy cơ</th>
+          <th>Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody id="facilityTable"></tbody>
+    </table>
+  </section>
+
+  <section class="history-section">
+    <h2>Lịch sử Snapshot Hàng Ngày</h2>
+    <div id="historyContainer"></div>
+  </section>
+
+  <script src="js/app.js"></script>
 </body>
 </html>
